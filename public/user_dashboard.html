@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Dashboard - Ayurvedic Medicine Finder</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7fc;
+      margin: 0;
+      padding: 0;
+    }
+
+    .navbar {
+      background-color: #2e7d32;
+      color: white;
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .navbar h2 {
+      margin: 0;
+    }
+
+    .navbar button {
+      background-color: #fff;
+      color: #2e7d32;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .navbar button:hover {
+      background-color: #e8f5e9;
+    }
+
+    .container {
+      width: 85%;
+      margin: 30px auto;
+      text-align: center;
+      background: #fff;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    .container h3 {
+      color: #2e7d32;
+      margin-bottom: 20px;
+    }
+
+    .container input, .container button {
+      padding: 10px;
+      margin: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    .container button {
+      background: #2e7d32;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .container button:hover {
+      background: #256528;
+    }
+
+    .results {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 30px;
+    }
+
+    .section {
+      background: white;
+      padding: 15px;
+      margin: 10px;
+      border-radius: 10px;
+      width: 280px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      text-align: left;
+    }
+
+    .section h4 {
+      color: #2e7d32;
+      margin-bottom: 8px;
+    }
+
+    img {
+      border-radius: 8px;
+      margin-top: 10px;
+      width: 150px;
+    }
+  </style>
+</head>
+
+<body>
+  <nav class="navbar">
+    <h2>Ayurvedic Medicine Finder</h2>
+    <button onclick="logout()">Logout</button>
+  </nav>
+
+  <div class="container">
+    <h3>Find Ayurvedic Remedies</h3>
+    <input type="text" id="diseaseInput" placeholder="Enter symptom, disease, company, or medicine name">
+    <button onclick="getMedicine()">Search</button>
+
+    <div class="results">
+      <div class="section">
+        <h4>Symptom(s)</h4>
+        <p id="symptom-list">Enter your query to see results.</p>
+      </div>
+
+      <div class="section">
+        <h4>Medicine Name</h4>
+        <p id="remedies-list"></p>
+      </div>
+
+      <div class="section">
+        <h4>Composition</h4>
+        <p id="composition-list"></p>
+      </div>
+
+      <div class="section">
+        <h4>Company</h4>
+        <p id="company-list"></p>
+      </div>
+
+      <div class="section">
+        <h4>Usage Info</h4>
+        <p id="usage-list"></p>
+      </div>
+
+      <div class="section">
+        <h4>Image</h4>
+        <div id="image-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ✅ Show logged-in user's name (if stored)
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) {
+      window.location.href = "login.html";
+    }
+
+    async function getMedicine() {
+      const input = document.getElementById("diseaseInput").value.trim();
+
+      if (!input) {
+        alert("Please enter a symptom, disease, company, or medicine name!");
+        return;
+      }
+
+      try {
+        const response = await fetch(`http://localhost:5000/api/medicines?symptom=${encodeURIComponent(input)}`);
+        const data = await response.json();
+
+        const symptomDiv = document.getElementById("symptom-list");
+        const remediesDiv = document.getElementById("remedies-list");
+        const compositionDiv = document.getElementById("composition-list");
+        const companyDiv = document.getElementById("company-list");
+        const usageDiv = document.getElementById("usage-list");
+        const imageDiv = document.getElementById("image-list");
+
+        if (!data || data.length === 0) {
+          symptomDiv.innerHTML = "No results found.";
+          remediesDiv.innerHTML = "";
+          compositionDiv.innerHTML = "";
+          companyDiv.innerHTML = "";
+          usageDiv.innerHTML = "";
+          imageDiv.innerHTML = "";
+          return;
+        }
+
+        // Collect unique values
+        const medicineNames = [...new Set(data.map(m => m.medicine_name))].join(", ");
+        const ingredients = [...new Set(data.map(m => m.ingredients))].join(", ");
+        const companies = [...new Set(data.map(m => m.company_name))].join(", ");
+        const usageInfo = [...new Set(data.map(m => m.usage_info))].join(", ");
+        const symptoms = [...new Set(data.map(m => m.symptom))].join(", ");
+
+        symptomDiv.innerHTML = symptoms || "N/A";
+        remediesDiv.innerHTML = medicineNames || "N/A";
+        compositionDiv.innerHTML = ingredients || "N/A";
+        companyDiv.innerHTML = companies || "N/A";
+        usageDiv.innerHTML = usageInfo || "N/A";
+
+        imageDiv.innerHTML = "";
+        if (data[0].image_path && data[0].image_path !== "null") {
+          imageDiv.innerHTML = `<img src="http://localhost:5000/${data[0].image_path}" alt="Medicine Image">`;
+        }
+      } catch (error) {
+        console.error("Error fetching medicine data:", error);
+      }
+    }
+
+    // ✅ Logout
+    function logout() {
+      localStorage.removeItem("role");
+      localStorage.removeItem("user");
+      window.location.href = "signup.html";
+    }
+  </script>
+</body>
+</html>
+
+
+
+
+
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7fc;
+      text-align: center;
+      padding: 40px;
+    }
+    .dashboard {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    h2 {
+      color: #333;
+    }
+    #diseaseInput {
+      padding: 10px;
+      width: 60%;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-right: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      background-color: #0066ff;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #004fcc;
+    }
+    .results {
+      margin-top: 30px;
+      text-align: left;
+    }
+    .results div {
+      background: #fafafa;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+    }
+    img {
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="dashboard">
+    <h2 id="welcomeText">Welcome, User!</h2>
+    <p>You are logged in as a <b>User</b>.</p>
+
+    <hr><br>
+
+    <h3>🔍 Search for Medicine by Symptom / Disease / Company / Medicine Name</h3>
+    <input type="text" id="diseaseInput" placeholder="Enter symptom, disease, company, or medicine name">
+    <button onclick="getMedicine()">Search</button>
+
+    <div class="results">
+      <h3>Search Results:</h3>
+      <div><b>Symptom(s):</b> <span id="symptom-list"></span></div>
+      <div><b>Medicine Name:</b> <span id="remedies-list"></span></div>
+      <div><b>Composition:</b> <span id="composition-list"></span></div>
+      <div><b>Company:</b> <span id="company-list"></span></div>
+      <div><b>Usage Info:</b> <span id="usage-list"></span></div>
+      <div id="image-list"></div>
+    </div>
+
+    <br>
+    <button id="logout">Logout</button>
+  </div>
+
+  <script>
+    // Show logged-in user's name
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) {
+      window.location.href = "login.html";
+    } else {
+      document.getElementById("welcomeText").textContent = `Welcome, ${user.name}!`;
+    }
+
+    async function getMedicine() {
+      const input = document.getElementById("diseaseInput").value.trim();
+
+      if (!input) {
+        alert("Please enter a symptom, disease, company, or medicine name!");
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5000/api/medicines?symptom=${encodeURIComponent(input)}`);
+      const data = await response.json();
+
+      const symptomDiv = document.getElementById("symptom-list");
+      const remediesDiv = document.getElementById("remedies-list");
+      const compositionDiv = document.getElementById("composition-list");
+      const companyDiv = document.getElementById("company-list");
+      const usageDiv = document.getElementById("usage-list");
+      const imageDiv = document.getElementById("image-list");
+
+      if (data.length === 0) {
+        symptomDiv.innerHTML = "No results found.";
+        remediesDiv.innerHTML = "";
+        compositionDiv.innerHTML = "";
+        companyDiv.innerHTML = "";
+        usageDiv.innerHTML = "";
+        imageDiv.innerHTML = "";
+        return;
+      }
+
+      // Collect all data
+      const medicineNames = [...new Set(data.map(m => m.medicine_name))].join(", ");
+      const ingredients = [...new Set(data.map(m => m.ingredients))].join(", ");
+      const companies = [...new Set(data.map(m => m.company_name))].join(", ");
+      const usageInfo = [...new Set(data.map(m => m.usage_info))].join(", ");
+      const symptoms = [...new Set(data.map(m => m.symptom))].join(", ");
+
+      symptomDiv.innerHTML = symptoms || "N/A";
+      remediesDiv.innerHTML = medicineNames || "N/A";
+      compositionDiv.innerHTML = ingredients || "N/A";
+      companyDiv.innerHTML = companies || "N/A";
+      usageDiv.innerHTML = usageInfo || "N/A";
+
+      // Image (only if available)
+      imageDiv.innerHTML = "";
+      if (data[0].image_path && data[0].image_path !== "null") {
+        imageDiv.innerHTML = `<img src="http://localhost:5000/${data[0].image_path}" alt="Medicine Image" width="150">`;
+      }
+    }
+
+    // Logout
+    document.getElementById("logout").addEventListener("click", () => {
+      localStorage.removeItem("role");
+      localStorage.removeItem("user");
+      window.location.href = "signup.html";
+    });
+  </script>
+</body>
+</html> -->
+
+
+
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f7fc;
+      text-align: center;
+      padding: 40px;
+    }
+    .dashboard {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    h2 {
+      color: #333;
+    }
+    #diseaseInput {
+      padding: 10px;
+      width: 60%;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      margin-right: 10px;
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      background-color: #0066ff;
+      color: white;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #004fcc;
+    }
+    .results {
+      margin-top: 30px;
+      text-align: left;
+    }
+    .results div {
+      background: #fafafa;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 15px;
+    }
+    img {
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="dashboard">
+    <h2 id="welcomeText">Welcome, User!</h2>
+    <p>You are logged in as a <b>User</b>.</p>
+
+    <hr><br>
+
+    <h3>🔍 Search for Medicine by Symptom / Disease / Company</h3>
+    <input type="text" id="diseaseInput" placeholder="Enter symptom, disease, or company name">
+    <button onclick="getMedicine()">Search</button>
+
+    <div class="results">
+      <h3>Search Results:</h3>
+      <div><b>Medicine Name:</b> <span id="remedies-list"></span></div>
+      <div><b>Composition:</b> <span id="composition-list"></span></div>
+      <div><b>Company:</b> <span id="company-list"></span></div>
+      <div><b>Usage Info:</b> <span id="usage-list"></span></div>
+      <div id="image-list"></div>
+    </div>
+
+    <br>
+    <button id="logout">Logout</button>
+  </div>
+
+  <script>
+    // Show logged-in user's name
+    const user = JSON.parse(localStorage.getItem("user"));
+    if (!user) {
+      window.location.href = "login.html";
+    } else {
+      document.getElementById("welcomeText").textContent = `Welcome, ${user.name}!`;
+    }
+
+    async function getMedicine() {
+      const input = document.getElementById("diseaseInput").value.trim();
+
+      if (!input) {
+        alert("Please enter a symptom, disease, or company name!");
+        return;
+      }
+
+      const response = await fetch(`http://localhost:5000/api/medicines?symptom=${encodeURIComponent(input)}`);
+      const data = await response.json();
+
+      const remediesDiv = document.getElementById("remedies-list");
+      const compositionDiv = document.getElementById("composition-list");
+      const companyDiv = document.getElementById("company-list");
+      const usageDiv = document.getElementById("usage-list");
+      const imageDiv = document.getElementById("image-list");
+
+      if (data.length === 0) {
+        remediesDiv.innerHTML = "No results found.";
+        compositionDiv.innerHTML = "";
+        companyDiv.innerHTML = "";
+        usageDiv.innerHTML = "";
+        imageDiv.innerHTML = "";
+        return;
+      }
+
+      const med = data[0];
+      remediesDiv.innerHTML = med.medicine_name;
+      compositionDiv.innerHTML = med.ingredients;
+      companyDiv.innerHTML = med.company_name;
+      usageDiv.innerHTML = med.usage_info;
+//imageDiv.innerHTML = `<img src="${med.image_path}" alt="Medicine Image" width="150">`;
+    }
+
+    // Logout
+    document.getElementById("logout").addEventListener("click", () => {
+      localStorage.removeItem("role");
+      localStorage.removeItem("user");
+      window.location.href = "signup.html";
+    });
+  </script>
+</body>
+</html> -->
+
+
+
+<!-- <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="dashboard">
+    <h2>Welcome, User!</h2>
+    <p>You are logged in as a user.</p>
+    <button id="logout">Logout</button>
+  </div>
+
+  <script>
+    document.getElementById("logout").addEventListener("click", () => {
+      localStorage.removeItem("role");
+      localStorage.removeItem("user");
+      window.location.href = "login.html";
+    });
+  </script>
+</body>
+</html> -->
